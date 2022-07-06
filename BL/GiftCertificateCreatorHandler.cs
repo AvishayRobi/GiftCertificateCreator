@@ -1,8 +1,8 @@
 using System;
 using System.Collections.Generic;
 using GiftCertificateCreator.Files;
-using GiftCertificateCreator.Logs;
 using GiftCertificateCreator.Model;
+using WallaShops.Common.Logs.BL;
 using WallaShops.Utils;
 
 namespace GiftCertificateCreator.BL
@@ -11,12 +11,16 @@ namespace GiftCertificateCreator.BL
   {
     #region Data Members
     private GiftCertificateDalManager dalManager { get; }
+    private FileManager fileManager { get; }
+    private FileInfo xmlFileInfo { get; }
     #endregion
 
     #region Ctor
     public GiftCertificateCreatorHandler()
     {
-      dalManager = new GiftCertificateDalManager();
+      this.xmlFileInfo = getFileInfo();
+      this.dalManager = new GiftCertificateDalManager();
+      this.fileManager = new FileManager(xmlFileInfo.FullPath);
     }
     #endregion
 
@@ -34,31 +38,32 @@ namespace GiftCertificateCreator.BL
     }
 
     private void handleGiftCertificates(IEnumerable<GiftCertificate> gifts)
-    {
-      FileInfo fileInfo = getFileInfo();
-      string sftpUploadError = processXml(gifts, fileInfo);
+    {      
+      string sftpUploadError = processXml(gifts);
+      deleteLocalFile();
 
-      updateProcessStatus(gifts, sftpUploadError, fileInfo.FullPath);
+      updateProcessStatus(gifts, sftpUploadError);
       attachXmlFileIdToGiftCertificates(gifts);
     }
 
-    private string processXml(IEnumerable<GiftCertificate> gifts, FileInfo fileInfo)
+    private string processXml(IEnumerable<GiftCertificate> gifts)
     {
       string xml = convertGiftsToXml(gifts);
 
-      saveDataLocalFile(xml, fileInfo.FullPath);
+      saveDataLocalFile(xml);
+      this.xmlFileInfo.VirtualPath = uploadXmlToBlob(xml);
 
-      return uploadToSftp(fileInfo.Name, fileInfo.FullPath);
+      return uploadXmlToSftp();
     }
 
-    private void updateProcessStatus(IEnumerable<GiftCertificate> gifts, string sftpUploadError, string filePath)
+    private void updateProcessStatus(IEnumerable<GiftCertificate> gifts, string sftpUploadError)
     {
       eProcessStatus status = getUploadStatus(sftpUploadError);
 
       this.dalManager.UpdateProcessStatus(
         creationStatus: status.ToString(),
         failureReason: sftpUploadError,
-        filePath: filePath);
+        fileInfo: this.xmlFileInfo);
     }
 
     private eProcessStatus getUploadStatus(string sftpUploadError)
@@ -79,17 +84,28 @@ namespace GiftCertificateCreator.BL
       .SetHeaders()
       .GetXml();
 
-    private void saveDataLocalFile(string data, string fileFullPath)
+    private void saveDataLocalFile(string data)
       =>
-      new FileManager()
-      .SaveData(data, fileFullPath);
+      this.fileManager
+      .SaveData(data);
 
-    private string uploadToSftp(string fileName, string fileFullPath)
+    private void deleteLocalFile()
+      =>
+      this.fileManager
+      .DeleteSavedFile();
+
+    private string uploadXmlToSftp()
       =>
       new SFTPUploader()
-      .SetFileFullPath(fileFullPath)
-      .SetFileName(fileName)
+      .SetFileInfo(this.xmlFileInfo)
       .UploadFile();
+
+    private string uploadXmlToBlob(string xml)
+      =>
+      new BlobUploader()
+      .GenerateFullPath(this.xmlFileInfo.Name)
+      .ConvertFileContent(xml)
+      .Upload();
 
     private FileInfo getFileInfo()
       =>
