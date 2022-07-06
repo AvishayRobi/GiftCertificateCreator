@@ -2,7 +2,6 @@ using System.Collections.Generic;
 using System.Data;
 using System.Linq;
 using GiftCertificateCreator.DAL;
-using GiftCertificateCreator.Extentions;
 using GiftCertificateCreator.Model;
 using WallaShops.Utils;
 
@@ -62,9 +61,9 @@ namespace GiftCertificateCreator.BL
              };
     }
 
-    public void UpdateProcessStatus(string filePath, string creationStatus, string failureReason = "")
+    public void UpdateProcessStatus(FileInfo fileInfo, string creationStatus, string failureReason = "")
       =>
-      this.dal.UpdateProcessStatus(filePath, creationStatus, failureReason);
+      this.dal.UpdateProcessStatus(fileInfo, creationStatus, failureReason);
     
     public void AttachXmlFileIdToGc(IEnumerable<GiftCertificate> giftCertificates)
       =>      
