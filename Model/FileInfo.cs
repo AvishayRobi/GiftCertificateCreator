@@ -8,6 +8,8 @@ namespace GiftCertificateCreator.Model
 
     public string FullPath { get; set; }
 
+    public string VirtualPath { get; set; }
+
     public FileInfo SetFullPath()
     {
       this.FullPath = this.Path + this.Name;
