@@ -39,6 +39,12 @@ namespace GiftCertificateCreator.Files
 
     public string Upload()
       =>
-      this.azureBlobClient.SaveFile("upload", this.fullPath, this.fileContent, "text/xml");   
+      this.azureBlobClient
+      .SaveFile(
+        fileFullPath: this.fullPath, 
+        stream: this.fileContent,
+        contentType: "text/xml",
+        container: "upload" 
+        );
   }
 }
